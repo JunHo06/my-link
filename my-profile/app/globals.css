@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fdfdfc;
+  --foreground: #000000;
 }
 
 @theme inline {
@@ -10,13 +10,13 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  
+  --color-neo-bg: #fffcf0;
+  --color-neo-yellow: #fde047;
+  --color-neo-pink: #f9a8d4;
+  --color-neo-blue: #93c5fd;
+  --color-neo-green: #86efac;
+  --color-neo-purple: #d8b4fe;
 }
 
 body {
@@ -26,62 +26,30 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom Utilities for Glassmorphism */
-.glass {
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+/* Neobrutalism Utilities */
+.neo-border {
+  border: 4px solid #000000;
 }
 
-@media (prefers-color-scheme: dark) {
-  .glass {
-    background: rgba(30, 30, 30, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-  }
+.neo-shadow {
+  box-shadow: 8px 8px 0px 0px #000000;
+  transition: all 0.15s ease-out;
 }
 
-/* Keyframes for Background Blobs Animation */
-@keyframes blob {
-  0% { transform: translate(0px, 0px) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-  100% { transform: translate(0px, 0px) scale(1); }
+.neo-shadow:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 6px 6px 0px 0px #000000;
 }
 
-.animate-blob {
-  animation: blob 7s infinite;
+.neo-shadow:active {
+  transform: translate(8px, 8px);
+  box-shadow: 0px 0px 0px 0px #000000;
 }
 
-.animation-delay-2000 {
-  animation-delay: 2s;
+.neo-text-shadow {
+  text-shadow: 4px 4px 0px rgba(0,0,0,1);
 }
 
-.animation-delay-4000 {
-  animation-delay: 4s;
+.neo-text-shadow-light {
+  text-shadow: 3px 3px 0px rgba(0,0,0,0.15);
 }
-
-/* Custom fade in up */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0; /* starts hidden before animation runs */
-}
-
-/* Utility to ensure base delay combinations */
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-400 { animation-delay: 400ms; }
