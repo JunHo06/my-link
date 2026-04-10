@@ -1,53 +1,56 @@
-# GEMINI.md - Project Context
+# GEMINI.md - MyLink Project Guide
 
-This file provides context and instructions for AI agents working on the `my-profile` project.
+This file provides essential instructions and context for AI agents working on the **MyLink** project. All actions must strictly adhere to these guidelines.
 
-## Project Overview
+## 1. Project Overview
+**MyLink** is a link aggregation service (Linktree clone) that allows users to manage and share multiple links through a single page.
 
-`my-profile` is a modern web application built with **Next.js 16.2.3** and **React 19**. It leverages **Tailwind CSS 4** for styling and **TypeScript** for a type-safe development experience.
+### Core Tech Stack
+- **Framework:** Next.js 16.1.7 (App Router)
+- **Library:** React 19.2.4
+- **Styling:** Tailwind CSS 4.2.1 (CSS-first configuration)
+- **Language:** TypeScript 5.9.3
+- **UI Components:** Shadcn UI, Radix UI, Lucide Icons
+- **Fonts:** Geist (Sans, Mono) via `next/font`
 
-### Main Technologies
-- **Framework:** Next.js 16.2.3 (using the App Router)
-- **Library:** React 19
-- **Styling:** Tailwind CSS 4 (with CSS-first configuration)
-- **Language:** TypeScript
-- **Fonts:** Geist (Sans and Mono) via `next/font`
+## 2. Project Architecture
+- `@app/`: App Router pages and layouts.
+- `@components/`: UI and business components.
+  - `@ui/`: Base components from Shadcn UI.
+- `@docs/`: PRD, User Scenarios, and Wireframe documentation.
+- `@hooks/`: Custom React hooks.
+- `@lib/`: Utilities and configurations (e.g., `@lib/utils.ts`).
+- `@public/`: Static assets (images, icons).
+- `@my-profile/`: Sub-module or reference Next.js setup.
 
-## Getting Started
+## 3. Key Commands
+- `npm run dev`: Start dev server with Turbopack (`http://localhost:3000`).
+- `npm run build`: Create production build.
+- `npm run start`: Run production build.
+- `npm run lint`: Run ESLint checks.
+- `npm run format`: Format code with Prettier.
+- `npm run typecheck`: Run TypeScript compiler check.
 
-### Prerequisites
-- Node.js (Latest LTS recommended)
-- npm, yarn, pnpm, or bun
+## 4. Development Conventions
 
-### Commands
-All commands should be run within the `my-profile` directory:
+### Styling (Tailwind CSS 4)
+- Follow Tailwind CSS 4 CSS-first setup.
+- Define global styles and theme variables in `@app/globals.css` using the `@theme` directive.
+- Use the `cn()` utility from `@lib/utils.ts` for dynamic class merging.
 
-- `npm run dev`: Start the development server at `http://localhost:3000`.
-- `npm run build`: Create an optimized production build.
-- `npm run start`: Start the production server.
-- `npm run lint`: Run ESLint for code quality and style checks.
+### Component Development
+- **Server Components:** Use React Server Components by default for fetching and static content.
+- **Client Components:** Use `'use client'` only when interactivity is required.
+- **Type Safety:** Maintain strict TypeScript definitions for all props and functions.
+- **Accessibility:** Follow Radix UI and Shadcn UI accessibility standards.
 
-## Architecture and Structure
+### Typography
+- Use Geist Sans and Geist Mono. Apply via `--font-geist-sans` and `--font-geist-mono` CSS variables.
 
-The project follows the standard Next.js App Router architecture:
+## 5. Reference Documentation
+- See `@docs/PRD.md` for detailed requirements.
+- See `@docs/user_scenario.md` for user flows.
+- See `@docs/wireframe.md` for UI designs.
 
-- `my-profile/app/`: The core application code.
-  - `layout.tsx`: Root layout defining fonts and global metadata.
-  - `page.tsx`: The main landing page.
-  - `globals.css`: Global styles and Tailwind CSS 4 theme configuration.
-- `my-profile/public/`: Static assets (images, icons, etc.).
-- `my-profile/next.config.ts`: Next.js-specific configuration.
-- `my-profile/tsconfig.json`: TypeScript configuration.
-
-## Development Conventions
-
-- **Server Components:** Prefer React Server Components for data fetching and static content.
-- **Styling:** Use Tailwind CSS utility classes. Custom theme variables are defined in `app/globals.css` using the `@theme` directive (Tailwind CSS 4).
-- **Type Safety:** Ensure all new components and functions are properly typed using TypeScript.
-- **Linting:** Adhere to the established ESLint rules to maintain code consistency.
-- **Fonts:** Use the `--font-geist-sans` and `--font-geist-mono` variables for consistent typography.
-
-## Key Files
-- `my-profile/package.json`: Project dependencies and scripts.
-- `my-profile/app/layout.tsx`: Root layout and font setup.
-- `my-profile/app/globals.css`: Tailwind 4 and global styles.
+---
+**Note:** Changes to `@GEMINI.md` must be discussed with the user as it serves as the foundational guide for the project.
