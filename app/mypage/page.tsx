@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Link as LinkIcon, Plus, Trash2, ExternalLink } from "lucide-react";
+import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, serverTimestamp } from "firebase/firestore";
 
 // 파비콘 이미지를 안전하게 불러오고 에러 시 fallback 처리하는 컴포넌트
 function FaviconImage({ 
@@ -73,31 +73,31 @@ export default function MyPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  // Firestore 실시간 데이터 동기화
-  useEffect(() => {
-    const q = query(collection(db, "user/anonymous/links"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const linkData: LinkItem[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          linkData.push({
-            id: doc.id,
-            title: data.title || "",
-            url: data.url || "",
-          });
+  // Firestore 데이터 조회 함수
+  const fetchLinks = async () => {
+    setIsLoading(true);
+    try {
+      const q = query(collection(db, "users/anonymous/links"), orderBy("createdAt", "desc"));
+      const querySnapshot = await getDocs(q);
+      const linkData: LinkItem[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        linkData.push({
+          id: doc.id,
+          title: data.title || "",
+          url: data.url || "",
         });
-        setLinks(linkData);
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error("Firestore links fetch error:", error);
-        setIsLoading(false);
-      }
-    );
+      });
+      setLinks(linkData);
+    } catch (error) {
+      console.error("Firestore links fetch error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchLinks();
   }, []);
 
   const handleAddLink = async (e: React.FormEvent) => {
@@ -128,7 +128,8 @@ export default function MyPage() {
       : `https://${trimmedUrl}`;
 
     try {
-      await addDoc(collection(db, "user/anonymous/links"), {
+      setIsLoading(true);
+      await addDoc(collection(db, "users/anonymous/links"), {
         title: trimmedTitle,
         url: finalUrl,
         createdAt: serverTimestamp(),
@@ -137,17 +138,22 @@ export default function MyPage() {
       setTitle("");
       setUrl("");
       setIsOpen(false);
+      await fetchLinks();
     } catch (err) {
       console.error("Firestore add error:", err);
       setErrorMessage("링크를 저장하지 못했습니다. 다시 시도해주세요.");
+      setIsLoading(false);
     }
   };
 
   const handleDeleteLink = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "user/anonymous/links", id));
+      setIsLoading(true);
+      await deleteDoc(doc(db, "users/anonymous/links", id));
+      await fetchLinks();
     } catch (err) {
       console.error("Firestore delete error:", err);
+      setIsLoading(false);
     }
   };
 
@@ -198,6 +204,7 @@ export default function MyPage() {
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="예: 내 깃허브 저장소"
                     className="bg-slate-950/80 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-purple-500 rounded-xl h-11"
+                    disabled={isLoading}
                   />
                 </div>
                 
@@ -211,6 +218,7 @@ export default function MyPage() {
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="example.com 또는 https://..."
                     className="bg-slate-950/80 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-purple-500 rounded-xl h-11"
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -224,14 +232,23 @@ export default function MyPage() {
                     variant="ghost"
                     onClick={() => setIsOpen(false)}
                     className="rounded-xl border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white"
+                    disabled={isLoading}
                   >
                     취소
                   </Button>
                   <Button 
                     type="submit" 
-                    className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold px-5 transition-colors"
+                    className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold px-5 transition-colors flex items-center gap-2"
+                    disabled={isLoading}
                   >
-                    링크 추가
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        추가 중...
+                      </>
+                    ) : (
+                      "링크 추가"
+                    )}
                   </Button>
                 </div>
               </form>
@@ -305,6 +322,7 @@ export default function MyPage() {
                       onClick={() => handleDeleteLink(link.id)}
                       className="h-8 w-8 text-slate-400 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-all"
                       title="링크 삭제"
+                      disabled={isLoading}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

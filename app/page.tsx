@@ -5,7 +5,7 @@ import { LinkItem } from "@/data/links";
 import { Card } from "@/components/ui/card";
 import { Globe, MessageCircle, Camera, Briefcase, Mail, Link as LinkIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
 // 파비콘 이미지를 안전하게 불러오고 에러 시 fallback 처리하는 컴포넌트
 function FaviconImage({ 
@@ -59,12 +59,13 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, "user/anonymous/links"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
+    const fetchLinks = async () => {
+      setIsLoading(true);
+      try {
+        const q = query(collection(db, "users/anonymous/links"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
         const linkData: LinkItem[] = [];
-        snapshot.forEach((doc) => {
+        querySnapshot.forEach((doc) => {
           const data = doc.data();
           linkData.push({
             id: doc.id,
@@ -73,15 +74,14 @@ export default function Page() {
           });
         });
         setLinks(linkData);
-        setIsLoading(false);
-      },
-      (error) => {
+      } catch (error) {
         console.error("Firestore fetch links error:", error);
+      } finally {
         setIsLoading(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    fetchLinks();
   }, []);
 
   return (
