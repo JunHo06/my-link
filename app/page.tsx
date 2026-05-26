@@ -1,8 +1,89 @@
-import { dummyLinks } from "@/data/links";
+"use client";
+
+import { useState, useEffect } from "react";
+import { LinkItem } from "@/data/links";
 import { Card } from "@/components/ui/card";
-import { Globe, MessageCircle, Camera, Briefcase, Mail } from "lucide-react";
+import { Globe, MessageCircle, Camera, Briefcase, Mail, Link as LinkIcon } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+
+// 파비콘 이미지를 안전하게 불러오고 에러 시 fallback 처리하는 컴포넌트
+function FaviconImage({ 
+  url, 
+  title, 
+  fallbackIcon: FallbackIcon 
+}: { 
+  url: string; 
+  title: string; 
+  fallbackIcon?: React.ComponentType<{ className?: string }> 
+}) {
+  const [hasError, setHasError] = useState(false);
+  const [prevUrl, setPrevUrl] = useState(url);
+
+  // url prop이 변경되면 에러 상태 리셋
+  if (url !== prevUrl) {
+    setPrevUrl(url);
+    setHasError(false);
+  }
+
+  let src = "";
+  let isInvalidUrl = false;
+  try {
+    const hostname = new URL(url).hostname;
+    // Google Favicon API 사용
+    src = `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`;
+  } catch {
+    isInvalidUrl = true;
+  }
+
+  if (hasError || isInvalidUrl || !src) {
+    if (FallbackIcon) {
+      return <FallbackIcon className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors duration-300" />;
+    }
+    return <LinkIcon className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors duration-300" />;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={title}
+      className="w-5 h-5 rounded-full object-contain bg-slate-800 p-0.5 border border-white/10 shadow-sm group-hover:scale-110 transition-transform duration-300"
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 export default function Page() {
+  const [links, setLinks] = useState<LinkItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, "user/anonymous/links"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const linkData: LinkItem[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          linkData.push({
+            id: doc.id,
+            title: data.title || "",
+            url: data.url || "",
+          });
+        });
+        setLinks(linkData);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error("Firestore fetch links error:", error);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
   return (
     <main className="dark flex min-h-svh flex-col items-center p-6 bg-aurora text-foreground relative overflow-hidden">
       {/* Decorative Overlays (for depth) */}
@@ -25,32 +106,50 @@ export default function Page() {
         
         {/* Links List (Glassmorphism applied) */}
         <div className="flex flex-col gap-4">
-          {dummyLinks.map((link) => {
-            const Icon = link.icon;
-            return (
-              <a 
-                key={link.id} 
-                href={link.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="group w-full outline-none rounded-xl focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+          {isLoading ? (
+            // Skeleton Loader
+            Array.from({ length: 4 }).map((_, i) => (
+              <Card 
+                key={i} 
+                className="relative flex flex-row items-center p-4 min-h-[60px] 
+                           border border-white/10 bg-white/5 backdrop-blur-md shadow-xl animate-pulse rounded-xl"
               >
-                <Card className="relative flex flex-row items-center p-4 min-h-[60px] cursor-pointer 
-                                 border border-white/10 bg-white/5 backdrop-blur-md shadow-xl 
-                                 transition-all duration-300 ease-out
-                                 hover:-translate-y-1 hover:bg-white/10 hover:border-white/20 hover:shadow-2xl hover:shadow-white/5 active:scale-[0.98]">
-                  {Icon && (
-                    <div className="absolute left-4">
-                      <Icon className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors duration-300" />
+                <div className="absolute left-4 w-5 h-5 rounded-full bg-white/10" />
+                <div className="flex-1 flex justify-center">
+                  <div className="h-4 bg-white/10 rounded w-1/3" />
+                </div>
+              </Card>
+            ))
+          ) : links.length === 0 ? (
+            <Card className="flex flex-col items-center justify-center p-8 min-h-[120px] border border-white/10 bg-white/5 backdrop-blur-md shadow-xl rounded-xl">
+              <span className="text-gray-400 text-sm">표시할 링크가 없습니다.</span>
+              <span className="text-gray-500 text-xs mt-1">관리자 페이지에서 링크를 추가해주세요.</span>
+            </Card>
+          ) : (
+            links.map((link) => {
+              return (
+                <a 
+                  key={link.id} 
+                  href={link.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="group w-full outline-none rounded-xl focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                >
+                  <Card className="relative flex flex-row items-center p-4 min-h-[60px] cursor-pointer 
+                                   border border-white/10 bg-white/5 backdrop-blur-md shadow-xl 
+                                   transition-all duration-300 ease-out
+                                   hover:-translate-y-1 hover:bg-white/10 hover:border-white/20 hover:shadow-2xl hover:shadow-white/5 active:scale-[0.98]">
+                    <div className="absolute left-4 flex items-center justify-center w-8 h-8 rounded-full bg-slate-950/20 border border-white/5">
+                      <FaviconImage url={link.url} title={link.title} fallbackIcon={link.icon} />
                     </div>
-                  )}
-                  <span className="flex-1 text-center font-semibold text-gray-100 group-hover:text-white transition-colors duration-300">
-                    {link.title}
-                  </span>
-                </Card>
-              </a>
-            );
-          })}
+                    <span className="flex-1 text-center font-semibold text-gray-100 group-hover:text-white transition-colors duration-300 pl-4">
+                      {link.title}
+                    </span>
+                  </Card>
+                </a>
+              );
+            })
+          )}
         </div>
 
         {/* Social Links (PRD 3.4) */}
