@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { User } from "firebase/auth";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, writeBatch } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { ProfileInfo } from "./dashboard-shell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   Share2
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUpdateProfile } from "@/hooks/use-profile";
 
 interface ProfileEditorProps {
   user: User;
@@ -45,7 +46,7 @@ export default function ProfileEditor({ user, profileInfo, isLoading }: ProfileE
   const [twitter, setTwitter] = useState(profileInfo.snsLinks.twitter || "");
   const [linkedin, setLinkedin] = useState(profileInfo.snsLinks.linkedin || "");
 
-  const [isSaving, setIsSaving] = useState(false);
+  const updateProfileMutation = useUpdateProfile();
 
   // Firestore 실시간 데이터가 로드되면 로컬 폼 상태 동기화
   useEffect(() => {
@@ -145,49 +146,37 @@ export default function ProfileEditor({ user, profileInfo, isLoading }: ProfileE
       }
     }
 
-    setIsSaving(true);
-
-    try {
-      const batch = writeBatch(db);
-      
-      // 1. username 변경 시 매핑 관계 수정
-      if (username !== dbUsername) {
-        if (dbUsername) {
-          const oldUsernameRef = doc(db, `usernames/${dbUsername}`);
-          batch.delete(oldUsernameRef);
-        }
-        
-        if (username) {
-          const newUsernameRef = doc(db, `usernames/${username}`);
-          batch.set(newUsernameRef, { uid: user.uid });
-        }
-      }
-
-      // 2. 프로필 문서 업데이트
-      const profileRef = doc(db, `users/${user.uid}/profile/info`);
-      batch.set(profileRef, {
-        nickname: nickname.trim() || user.displayName || "사용자",
-        bio: bio.trim(),
-        theme: profileInfo.theme || "notion-white",
-        username: username.trim(),
-        snsLinks: {
-          instagram: instagram.trim(),
-          youtube: youtube.trim(),
-          github: github.trim(),
-          twitter: twitter.trim(),
-          linkedin: linkedin.trim(),
+    updateProfileMutation.mutate(
+      {
+        userId: user.uid,
+        newProfile: {
+          nickname: nickname.trim() || user.displayName || "사용자",
+          bio: bio.trim(),
+          theme: profileInfo.theme || "notion-white",
+          username: username.trim(),
+          snsLinks: {
+            instagram: instagram.trim(),
+            youtube: youtube.trim(),
+            github: github.trim(),
+            twitter: twitter.trim(),
+            linkedin: linkedin.trim(),
+          },
         },
-      });
-
-      await batch.commit();
-      toast.success("프로필 설정이 저장되었습니다.");
-    } catch (err) {
-      console.error("프로필 저장 에러:", err);
-      toast.error("프로필 설정을 저장하지 못했습니다.");
-    } finally {
-      setIsSaving(false);
-    }
+        oldUsername: dbUsername,
+      },
+      {
+        onSuccess: () => {
+          toast.success("프로필 설정이 저장되었습니다.");
+        },
+        onError: (err) => {
+          console.error("프로필 저장 에러:", err);
+          toast.error("프로필 설정을 저장하지 못했습니다.");
+        },
+      }
+    );
   };
+
+  const isSaving = updateProfileMutation.isPending;
 
   return (
     <form onSubmit={handleSaveProfile} className="space-y-5 text-slate-800">

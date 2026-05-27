@@ -2,17 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { User } from "firebase/auth";
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  setDoc,
-  writeBatch,
-  serverTimestamp,
-} from "firebase/firestore";
 import { DashboardLinkItem } from "./dashboard-shell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +18,14 @@ import {
 import { Plus, Loader2, Link as LinkIcon } from "lucide-react";
 import LinkCard from "./link-card";
 import { toast } from "sonner";
+import {
+  useAddLink,
+  useUpdateLink,
+  useToggleLinkActive,
+  useDeleteLink,
+  useRestoreLink,
+  useUpdateLinksOrder,
+} from "@/hooks/use-links";
 
 interface LinkManagerProps {
   user: User;
@@ -45,7 +42,14 @@ export default function LinkManager({ user, links, isLoading }: LinkManagerProps
   const [addTitle, setAddTitle] = useState("");
   const [addUrl, setAddUrl] = useState("");
   const [addErrorMessage, setAddErrorMessage] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
+
+  // Mutations
+  const addLinkMutation = useAddLink();
+  const updateLinkMutation = useUpdateLink();
+  const toggleLinkActiveMutation = useToggleLinkActive();
+  const deleteLinkMutation = useDeleteLink();
+  const restoreLinkMutation = useRestoreLink();
+  const updateLinksOrderMutation = useUpdateLinksOrder();
 
   // Firestore 데이터가 업데이트되면 로컬 리스트도 업데이트 (단, 드래그 중이 아닐 때만)
   useEffect(() => {
@@ -82,29 +86,29 @@ export default function LinkManager({ user, links, isLoading }: LinkManagerProps
         ? trimmedUrl
         : `https://${trimmedUrl}`;
 
-    setIsAdding(true);
-    try {
-      // 추가할 때 order는 맨 마지막으로 지정
-      const nextOrder = links.reduce((max, link) => Math.max(max, link.order || 0), -1) + 1;
+    // 추가할 때 order는 맨 마지막으로 지정
+    const nextOrder = links.reduce((max, link) => Math.max(max, link.order || 0), -1) + 1;
 
-      await addDoc(collection(db, `users/${user.uid}/links`), {
+    addLinkMutation.mutate(
+      {
+        userId: user.uid,
         title: trimmedTitle,
         url: finalUrl,
-        active: true,
-        order: nextOrder,
-        createdAt: serverTimestamp(),
-      });
-
-      setAddTitle("");
-      setAddUrl("");
-      setIsAddOpen(false);
-      toast.success("링크가 추가되었습니다.");
-    } catch (err) {
-      console.error("Firestore 링크 추가 에러:", err);
-      setAddErrorMessage("링크를 추가하지 못했습니다. 다시 시도해주세요.");
-    } finally {
-      setIsAdding(false);
-    }
+        nextOrder,
+      },
+      {
+        onSuccess: () => {
+          setAddTitle("");
+          setAddUrl("");
+          setIsAddOpen(false);
+          toast.success("링크가 추가되었습니다.");
+        },
+        onError: (err) => {
+          console.error("Firestore 링크 추가 에러:", err);
+          setAddErrorMessage("링크를 추가하지 못했습니다. 다시 시도해주세요.");
+        },
+      }
+    );
   };
 
   // 링크 수정 처리
@@ -115,7 +119,9 @@ export default function LinkManager({ user, links, isLoading }: LinkManagerProps
         : `https://${url}`;
 
     try {
-      await updateDoc(doc(db, `users/${user.uid}/links`, id), {
+      await updateLinkMutation.mutateAsync({
+        userId: user.uid,
+        linkId: id,
         title,
         url: finalUrl,
       });
@@ -129,50 +135,71 @@ export default function LinkManager({ user, links, isLoading }: LinkManagerProps
 
   // 링크 공개/비공개 토글 처리
   const handleToggleActive = async (id: string, active: boolean) => {
-    try {
-      await updateDoc(doc(db, `users/${user.uid}/links`, id), {
+    toggleLinkActiveMutation.mutate(
+      {
+        userId: user.uid,
+        linkId: id,
         active,
-      });
-      toast.success(active ? "링크를 공개 상태로 전환했습니다." : "링크를 비공개 상태로 전환했습니다.");
-    } catch (err) {
-      console.error("Firestore 링크 토글 에러:", err);
-      toast.error("설정을 변경하지 못했습니다.");
-    }
+      },
+      {
+        onSuccess: () => {
+          toast.success(
+            active ? "링크를 공개 상태로 전환했습니다." : "링크를 비공개 상태로 전환했습니다."
+          );
+        },
+        onError: (err) => {
+          console.error("Firestore 링크 토글 에러:", err);
+          toast.error("설정을 변경하지 못했습니다.");
+        },
+      }
+    );
   };
 
   // 링크 삭제 처리 (실행 취소 - Undo 지원)
   const handleDeleteLink = async (link: DashboardLinkItem) => {
-    try {
-      const linkRef = doc(db, `users/${user.uid}/links`, link.id);
-      await deleteDoc(linkRef);
-
-      // 복구 가능한 Toast 띄우기 (Notion 어두운 차콜 메시지 창 느낌)
-      toast.success(`"${link.title}" 링크가 삭제되었습니다.`, {
-        action: {
-          label: "실행 취소",
-          onClick: async () => {
-            try {
-              const restoreRef = doc(db, `users/${user.uid}/links`, link.id);
-              await setDoc(restoreRef, {
-                title: link.title,
-                url: link.url,
-                active: link.active !== undefined ? link.active : true,
-                order: link.order !== undefined ? link.order : 0,
-                createdAt: new Date(),
-              });
-              toast.success("링크가 복구되었습니다.");
-            } catch (err) {
-              console.error("링크 복구 에러:", err);
-              toast.error("링크를 복구하지 못했습니다.");
-            }
-          },
+    deleteLinkMutation.mutate(
+      {
+        userId: user.uid,
+        linkId: link.id,
+      },
+      {
+        onSuccess: () => {
+          toast.success(`"${link.title}" 링크가 삭제되었습니다.`, {
+            action: {
+              label: "실행 취소",
+              onClick: () => {
+                restoreLinkMutation.mutate(
+                  {
+                    userId: user.uid,
+                    linkId: link.id,
+                    link: {
+                      title: link.title,
+                      url: link.url,
+                      active: link.active !== undefined ? link.active : true,
+                      order: link.order !== undefined ? link.order : 0,
+                    },
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.success("링크가 복구되었습니다.");
+                    },
+                    onError: (err) => {
+                      console.error("링크 복구 에러:", err);
+                      toast.error("링크를 복구하지 못했습니다.");
+                    },
+                  }
+                );
+              },
+            },
+            duration: 5000,
+          });
         },
-        duration: 5000,
-      });
-    } catch (err) {
-      console.error("Firestore 링크 삭제 에러:", err);
-      toast.error("링크를 삭제하지 못했습니다.");
-    }
+        onError: (err) => {
+          console.error("Firestore 링크 삭제 에러:", err);
+          toast.error("링크를 삭제하지 못했습니다.");
+        },
+      }
+    );
   };
 
   // HTML5 Drag & Drop: 드래그 시작
@@ -200,20 +227,25 @@ export default function LinkManager({ user, links, isLoading }: LinkManagerProps
     if (draggedIndex === null) return;
     setDraggedIndex(null);
 
-    try {
-      const batch = writeBatch(db);
-      localLinks.forEach((link, index) => {
-        const linkRef = doc(db, `users/${user.uid}/links`, link.id);
-        batch.update(linkRef, { order: index });
-      });
-      await batch.commit();
-      toast.success("순서가 저장되었습니다.");
-    } catch (err) {
-      console.error("순서 일괄 업데이트 에러:", err);
-      toast.error("순서를 저장하지 못했습니다.");
-      setLocalLinks(links);
-    }
+    updateLinksOrderMutation.mutate(
+      {
+        userId: user.uid,
+        localLinks,
+      },
+      {
+        onSuccess: () => {
+          toast.success("순서가 저장되었습니다.");
+        },
+        onError: (err) => {
+          console.error("순서 일괄 업데이트 에러:", err);
+          toast.error("순서를 저장하지 못했습니다.");
+          setLocalLinks(links);
+        },
+      }
+    );
   };
+
+  const isAdding = addLinkMutation.isPending;
 
   return (
     <div className="space-y-5 text-slate-800">

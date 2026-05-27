@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { User } from "firebase/auth";
-import { db } from "@/lib/firebase";
-import { collection, doc, onSnapshot, query, orderBy } from "firebase/firestore";
 import { LinkItem } from "@/data/links";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link2, User as UserIcon } from "lucide-react";
 import LinkManager from "./link-manager";
 import ProfileEditor from "./profile-editor";
 import { Toaster } from "@/components/ui/sonner";
+import { useLinks } from "@/hooks/use-links";
 
 export interface DashboardLinkItem extends LinkItem {
   active?: boolean;
@@ -38,42 +36,8 @@ interface DashboardShellProps {
 }
 
 export default function DashboardShell({ user, onLogout, profileInfo, loadingProfile }: DashboardShellProps) {
-  const [links, setLinks] = useState<DashboardLinkItem[]>([]);
-  const [loadingLinks, setLoadingLinks] = useState(true);
-
-  // 1. 링크 데이터 실시간 구독
-  useEffect(() => {
-    const q = query(
-      collection(db, `users/${user.uid}/links`),
-      orderBy("order", "asc")
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const linkData: DashboardLinkItem[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          linkData.push({
-            id: doc.id,
-            title: data.title || "",
-            url: data.url || "",
-            active: data.active !== undefined ? data.active : true,
-            order: data.order !== undefined ? data.order : 0,
-          });
-        });
-        
-        setLinks(linkData);
-        setLoadingLinks(false);
-      },
-      (error) => {
-        console.error("실시간 링크 로드 에러:", error);
-        setLoadingLinks(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [user.uid]);
+  // React Query 기반 링크 목록 획득
+  const { data: links = [], isLoading: loadingLinks } = useLinks(user.uid);
 
   return (
     <div className="flex-1 w-full max-w-2xl mx-auto px-4 py-8 md:py-12">

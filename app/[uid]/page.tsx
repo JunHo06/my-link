@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, orderBy } from "firebase/firestore";
-import { DashboardLinkItem, ProfileInfo } from "@/components/dashboard/dashboard-shell";
+import { doc, getDoc } from "firebase/firestore";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,88 +19,45 @@ import {
 } from "lucide-react";
 import FaviconImage from "@/components/dashboard/favicon-image";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { useProfile } from "@/hooks/use-profile";
+import { useLinks } from "@/hooks/use-links";
 
 export default function PublicProfilePage() {
   const params = useParams();
   const router = useRouter();
   const uid = params.uid as string;
 
-  const [profile, setProfile] = useState<ProfileInfo | null>(null);
-  const [links, setLinks] = useState<DashboardLinkItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  // Firestore에서 프로필 정보 및 활성화된 링크 로드
-  useEffect(() => {
-    if (!uid) return;
-
-    const fetchPublicData = async () => {
-      setLoading(true);
-      setError(false);
-      try {
-        let targetUid = uid;
-
-        // 1. usernames 컬렉션에서 username이 매핑된 uid가 있는지 조회
-        const usernameRef = doc(db, `usernames/${uid}`);
-        const usernameSnap = await getDoc(usernameRef);
-        
-        if (usernameSnap.exists()) {
-          const mappingData = usernameSnap.data();
-          if (mappingData.uid) {
-            targetUid = mappingData.uid;
-          }
-        }
-
-        // 2. 프로필 정보 획득
-        const profileRef = doc(db, `users/${targetUid}/profile/info`);
-        const profileSnap = await getDoc(profileRef);
-
-        let profileData: ProfileInfo;
-        if (profileSnap.exists()) {
-          const data = profileSnap.data();
-          profileData = {
-            nickname: data.nickname || "사용자",
-            bio: data.bio || "",
-            theme: data.theme || "notion-white",
-            username: data.username || "",
-            snsLinks: data.snsLinks || {},
-          };
-        } else {
-          setError(true);
-          setLoading(false);
-          return;
-        }
-
-        // 3. 링크 목록 획득 (active !== false)
-        const linksRef = collection(db, `users/${targetUid}/links`);
-        const querySnapshot = await getDocs(query(linksRef, orderBy("order", "asc")));
-        const linkData: DashboardLinkItem[] = [];
-        
-        querySnapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data.active !== false) {
-            linkData.push({
-              id: docSnap.id,
-              title: data.title || "",
-              url: data.url || "",
-              active: true,
-              order: data.order !== undefined ? data.order : 0,
-            });
-          }
-        });
-
-        setProfile(profileData);
-        setLinks(linkData);
-      } catch (err) {
-        console.error("공개 프로필 로딩 실패:", err);
-        setError(true);
-      } finally {
-        setLoading(false);
+  // 1. usernames 컬렉션에서 username이 매핑된 실제 uid가 있는지 조회
+  const { data: targetUid, isLoading: loadingUid, isError: isUidError } = useQuery({
+    queryKey: ["resolveUid", uid],
+    queryFn: async () => {
+      if (!uid) return null;
+      const usernameRef = doc(db, `usernames/${uid}`);
+      const usernameSnap = await getDoc(usernameRef);
+      
+      if (usernameSnap.exists()) {
+        const mappingData = usernameSnap.data();
+        return mappingData.uid || uid;
       }
-    };
+      return uid;
+    },
+    enabled: !!uid,
+  });
 
-    fetchPublicData();
-  }, [uid]);
+  // 2. 프로필 정보 획득 (targetUid 해결 후 활성화)
+  const { data: profile, isLoading: loadingProfile, isError: isProfileError } = useProfile(targetUid || undefined);
+
+  // 3. 전체 링크 목록 획득 (targetUid 해결 후 활성화)
+  const { data: allLinks = [], isLoading: loadingLinks, isError: isLinksError } = useLinks(targetUid || undefined);
+
+  // 공개 페이지이므로 active 활성화된 링크만 노출
+  const links = allLinks.filter((link) => link.active !== false);
+
+  const loading = loadingUid || loadingProfile || loadingLinks;
+  // 프로필 데이터를 성공적으로 가져오지 못했다면 에러(404) 처리
+  const error = isUidError || isProfileError || isLinksError || (!loading && !profile);
+
 
   const handleShare = () => {
     if (typeof window !== "undefined") {

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Link as LinkIcon, Loader2, LogIn, LogOut, ChevronDown, Share2, Sparkles, Smartphone, Layers, ShieldCheck } from "lucide-react";
 import { db, auth, googleProvider } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,12 +18,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import DashboardShell, { ProfileInfo } from "@/components/dashboard/dashboard-shell";
 import { toast } from "sonner";
+import { useProfile } from "@/hooks/use-profile";
 
 export default function Page() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
 
   // Auth 상태 변경 감지
   useEffect(() => {
@@ -34,47 +33,9 @@ export default function Page() {
     return () => unsubscribe();
   }, []);
 
-  // 프로필 정보 실시간 구독
-  useEffect(() => {
-    if (!user) {
-      setProfileInfo(null);
-      setProfileLoading(false);
-      return;
-    }
+  // React Query 프로필 정보 획득
+  const { data: profileInfo, isLoading: profileLoading } = useProfile(user?.uid);
 
-    setProfileLoading(true);
-    const profileRef = doc(db, `users/${user.uid}/profile/info`);
-    const unsubscribe = onSnapshot(
-      profileRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setProfileInfo({
-            nickname: data.nickname || user.displayName || "사용자",
-            bio: data.bio || "",
-            theme: data.theme || "notion-white",
-            username: data.username || "",
-            snsLinks: data.snsLinks || {},
-          });
-        } else {
-          setProfileInfo({
-            nickname: user.displayName || "사용자",
-            bio: "",
-            theme: "notion-white",
-            username: "",
-            snsLinks: {},
-          });
-        }
-        setProfileLoading(false);
-      },
-      (error) => {
-        console.error("실시간 프로필 로드 에러:", error);
-        setProfileLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [user]);
 
   const handleLogin = async () => {
     try {
@@ -286,7 +247,13 @@ export default function Page() {
           <DashboardShell 
             user={user} 
             onLogout={handleLogout} 
-            profileInfo={profileInfo || { nickname: user.displayName || "사용자", bio: "", theme: "notion-white", username: "", snsLinks: {} }}
+            profileInfo={{
+              nickname: profileInfo?.nickname || user.displayName || "사용자",
+              bio: profileInfo?.bio || "",
+              theme: profileInfo?.theme || "notion-white",
+              username: profileInfo?.username || "",
+              snsLinks: profileInfo?.snsLinks || {},
+            }}
             loadingProfile={profileLoading}
           />
         )}
