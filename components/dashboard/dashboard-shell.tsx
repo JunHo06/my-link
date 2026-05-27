@@ -20,6 +20,7 @@ export interface ProfileInfo {
   nickname: string;
   bio: string;
   theme: string;
+  username?: string;
   snsLinks: {
     instagram?: string;
     youtube?: string;
@@ -32,18 +33,13 @@ export interface ProfileInfo {
 interface DashboardShellProps {
   user: User;
   onLogout: () => void;
+  profileInfo: ProfileInfo;
+  loadingProfile: boolean;
 }
 
-export default function DashboardShell({ user, onLogout }: DashboardShellProps) {
+export default function DashboardShell({ user, onLogout, profileInfo, loadingProfile }: DashboardShellProps) {
   const [links, setLinks] = useState<DashboardLinkItem[]>([]);
-  const [profileInfo, setProfileInfo] = useState<ProfileInfo>({
-    nickname: user.displayName || "사용자",
-    bio: "",
-    theme: "notion-white",
-    snsLinks: {},
-  });
   const [loadingLinks, setLoadingLinks] = useState(true);
-  const [loadingProfile, setLoadingProfile] = useState(true);
 
   // 1. 링크 데이터 실시간 구독
   useEffect(() => {
@@ -78,39 +74,6 @@ export default function DashboardShell({ user, onLogout }: DashboardShellProps) 
 
     return () => unsubscribe();
   }, [user.uid]);
-
-  // 2. 프로필 정보 실시간 구독
-  useEffect(() => {
-    const profileRef = doc(db, `users/${user.uid}/profile/info`);
-    const unsubscribe = onSnapshot(
-      profileRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setProfileInfo({
-            nickname: data.nickname || user.displayName || "사용자",
-            bio: data.bio || "",
-            theme: data.theme || "notion-white",
-            snsLinks: data.snsLinks || {},
-          });
-        } else {
-          setProfileInfo({
-            nickname: user.displayName || "사용자",
-            bio: "",
-            theme: "notion-white",
-            snsLinks: {},
-          });
-        }
-        setLoadingProfile(false);
-      },
-      (error) => {
-        console.error("실시간 프로필 로드 에러:", error);
-        setLoadingProfile(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [user.uid, user.displayName]);
 
   return (
     <div className="flex-1 w-full max-w-2xl mx-auto px-4 py-8 md:py-12">

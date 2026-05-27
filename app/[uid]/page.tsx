@@ -40,8 +40,21 @@ export default function PublicProfilePage() {
       setLoading(true);
       setError(false);
       try {
-        // 1. 프로필 정보 획득
-        const profileRef = doc(db, `users/${uid}/profile/info`);
+        let targetUid = uid;
+
+        // 1. usernames 컬렉션에서 username이 매핑된 uid가 있는지 조회
+        const usernameRef = doc(db, `usernames/${uid}`);
+        const usernameSnap = await getDoc(usernameRef);
+        
+        if (usernameSnap.exists()) {
+          const mappingData = usernameSnap.data();
+          if (mappingData.uid) {
+            targetUid = mappingData.uid;
+          }
+        }
+
+        // 2. 프로필 정보 획득
+        const profileRef = doc(db, `users/${targetUid}/profile/info`);
         const profileSnap = await getDoc(profileRef);
 
         let profileData: ProfileInfo;
@@ -50,7 +63,8 @@ export default function PublicProfilePage() {
           profileData = {
             nickname: data.nickname || "사용자",
             bio: data.bio || "",
-            theme: "notion-white",
+            theme: data.theme || "notion-white",
+            username: data.username || "",
             snsLinks: data.snsLinks || {},
           };
         } else {
@@ -59,8 +73,8 @@ export default function PublicProfilePage() {
           return;
         }
 
-        // 2. 링크 목록 획득 (active !== false)
-        const linksRef = collection(db, `users/${uid}/links`);
+        // 3. 링크 목록 획득 (active !== false)
+        const linksRef = collection(db, `users/${targetUid}/links`);
         const querySnapshot = await getDocs(query(linksRef, orderBy("order", "asc")));
         const linkData: DashboardLinkItem[] = [];
         

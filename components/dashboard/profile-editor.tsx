@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { User } from "firebase/auth";
 import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, getDoc, writeBatch } from "firebase/firestore";
 import { ProfileInfo } from "./dashboard-shell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,13 @@ interface ProfileEditorProps {
 export default function ProfileEditor({ user, profileInfo, isLoading }: ProfileEditorProps) {
   const [nickname, setNickname] = useState(profileInfo.nickname);
   const [bio, setBio] = useState(profileInfo.bio);
+  const [username, setUsername] = useState(profileInfo.username || "");
+  
+  // 중복 확인 관련 상태
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+  const [isUsernameChecked, setIsUsernameChecked] = useState(false);
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState(false);
   
   // SNS 링크 개별 상태
   const [instagram, setInstagram] = useState(profileInfo.snsLinks.instagram || "");
@@ -44,6 +51,18 @@ export default function ProfileEditor({ user, profileInfo, isLoading }: ProfileE
   useEffect(() => {
     setNickname(profileInfo.nickname);
     setBio(profileInfo.bio);
+    
+    const dbUsername = profileInfo.username || "";
+    setUsername(dbUsername);
+    if (dbUsername) {
+      setIsUsernameChecked(true);
+      setIsUsernameAvailable(true);
+    } else {
+      setIsUsernameChecked(false);
+      setIsUsernameAvailable(false);
+    }
+    setUsernameError("");
+    
     setInstagram(profileInfo.snsLinks.instagram || "");
     setYoutube(profileInfo.snsLinks.youtube || "");
     setGithub(profileInfo.snsLinks.github || "");
@@ -51,17 +70,106 @@ export default function ProfileEditor({ user, profileInfo, isLoading }: ProfileE
     setLinkedin(profileInfo.snsLinks.linkedin || "");
   }, [profileInfo]);
 
+  // Username 입력값 변경 핸들러
+  const handleUsernameChange = (val: string) => {
+    // 공백 제거 및 소문자화, 일부 특수문자 등 정제
+    const cleanVal = val.toLowerCase().replace(/\s/g, "");
+    setUsername(cleanVal);
+    
+    const dbUsername = profileInfo.username || "";
+    if (cleanVal === dbUsername) {
+      setIsUsernameChecked(true);
+      setIsUsernameAvailable(true);
+      setUsernameError("");
+    } else {
+      setIsUsernameChecked(false);
+      setIsUsernameAvailable(false);
+      setUsernameError("");
+    }
+  };
+
+  // Username 중복 확인
+  const handleCheckUsername = async () => {
+    if (!username.trim()) {
+      setUsernameError("아이디를 입력해 주세요.");
+      return;
+    }
+    
+    // 유효성 검사 (영문 소문자, 숫자, 하이픈, 언더바, 3~20자)
+    const regex = /^[a-z0-9-_]{3,20}$/;
+    if (!regex.test(username)) {
+      setUsernameError("3~20자의 영문 소문자, 숫자, 하이픈(-), 언더바(_)만 가능합니다.");
+      return;
+    }
+
+    setIsCheckingUsername(true);
+    setUsernameError("");
+
+    try {
+      const usernameRef = doc(db, `usernames/${username}`);
+      const usernameSnap = await getDoc(usernameRef);
+
+      if (usernameSnap.exists()) {
+        const data = usernameSnap.data();
+        if (data.uid === user.uid) {
+          setIsUsernameChecked(true);
+          setIsUsernameAvailable(true);
+          toast.info("현재 사용 중인 고유 아이디입니다.");
+        } else {
+          setIsUsernameChecked(true);
+          setIsUsernameAvailable(false);
+          setUsernameError("이미 다른 사용자가 사용 중인 아이디입니다.");
+        }
+      } else {
+        setIsUsernameChecked(true);
+        setIsUsernameAvailable(true);
+        toast.success("사용 가능한 고유 아이디입니다!");
+      }
+    } catch (err) {
+      console.error("아이디 중복 확인 에러:", err);
+      toast.error("중복 확인 중 에러가 발생했습니다.");
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
   // 프로필 정보 Firestore 저장
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const dbUsername = profileInfo.username || "";
+    if (username !== dbUsername) {
+      if (!isUsernameChecked || !isUsernameAvailable) {
+        toast.error("고유 주소 아이디 중복 확인을 완료해 주세요.");
+        return;
+      }
+    }
+
     setIsSaving(true);
 
     try {
+      const batch = writeBatch(db);
+      
+      // 1. username 변경 시 매핑 관계 수정
+      if (username !== dbUsername) {
+        if (dbUsername) {
+          const oldUsernameRef = doc(db, `usernames/${dbUsername}`);
+          batch.delete(oldUsernameRef);
+        }
+        
+        if (username) {
+          const newUsernameRef = doc(db, `usernames/${username}`);
+          batch.set(newUsernameRef, { uid: user.uid });
+        }
+      }
+
+      // 2. 프로필 문서 업데이트
       const profileRef = doc(db, `users/${user.uid}/profile/info`);
-      await setDoc(profileRef, {
+      batch.set(profileRef, {
         nickname: nickname.trim() || user.displayName || "사용자",
         bio: bio.trim(),
-        theme: "notion-white", // 테마는 기본 노션 화이트로 고정
+        theme: profileInfo.theme || "notion-white",
+        username: username.trim(),
         snsLinks: {
           instagram: instagram.trim(),
           youtube: youtube.trim(),
@@ -70,6 +178,8 @@ export default function ProfileEditor({ user, profileInfo, isLoading }: ProfileE
           linkedin: linkedin.trim(),
         },
       });
+
+      await batch.commit();
       toast.success("프로필 설정이 저장되었습니다.");
     } catch (err) {
       console.error("프로필 저장 에러:", err);
@@ -96,6 +206,45 @@ export default function ProfileEditor({ user, profileInfo, isLoading }: ProfileE
           </div>
         ) : (
           <div className="space-y-3.5">
+            {/* 고유 주소 아이디 (Username) */}
+            <div className="space-y-1.5">
+              <Label htmlFor="username" className="text-slate-500 font-semibold text-[11px] uppercase tracking-wide">
+                고유 주소 아이디 (Username)
+              </Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="username"
+                    value={username}
+                    onChange={(e) => handleUsernameChange(e.target.value)}
+                    placeholder="사용할 아이디 입력"
+                    className="bg-white border-slate-200 text-slate-800 placeholder:text-slate-330 focus-visible:ring-slate-400 rounded-lg h-9.5 text-sm font-mono"
+                    disabled={isSaving || isCheckingUsername}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleCheckUsername}
+                  disabled={isSaving || isCheckingUsername || (username === (profileInfo.username || "") && username !== "")}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-semibold rounded-lg h-9.5 px-4 text-xs shrink-0 cursor-pointer transition-colors"
+                >
+                  {isCheckingUsername ? "확인 중..." : "중복 확인"}
+                </Button>
+              </div>
+              
+              {usernameError && (
+                <p className="text-[10.5px] text-red-500 font-semibold leading-relaxed pl-1">
+                  {usernameError}
+                </p>
+              )}
+              {isUsernameChecked && isUsernameAvailable && username !== (profileInfo.username || "") && (
+                <p className="text-[10.5px] text-emerald-600 font-semibold leading-relaxed pl-1">
+                  사용 가능한 고유 아이디입니다.
+                </p>
+              )}
+            </div>
+
+            {/* 닉네임 */}
             <div className="space-y-1.5">
               <Label htmlFor="nickname" className="text-slate-500 font-semibold text-[11px] uppercase tracking-wide">
                 닉네임

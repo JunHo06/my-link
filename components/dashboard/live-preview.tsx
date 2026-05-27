@@ -46,7 +46,7 @@ export default function LivePreview({ user, links, profileInfo }: LivePreviewPro
             <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
           </div>
           <div className="text-[10px] text-slate-400 font-mono truncate max-w-[150px]">
-            mylink.com/{user.uid.slice(0, 8)}
+            mylink.com/{profileInfo.username || user.uid.slice(0, 8)}
           </div>
           <div className="w-4 h-4" /> {/* 스페이서 */}
         </div>

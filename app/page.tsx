@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Link as LinkIcon, Loader2, LogIn, LogOut, ChevronDown, Share2, Sparkles, Smartphone, Layers, ShieldCheck } from "lucide-react";
 import { db, auth, googleProvider } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,12 +16,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import DashboardShell from "@/components/dashboard/dashboard-shell";
+import DashboardShell, { ProfileInfo } from "@/components/dashboard/dashboard-shell";
 import { toast } from "sonner";
 
 export default function Page() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   // Auth 상태 변경 감지
   useEffect(() => {
@@ -30,6 +33,48 @@ export default function Page() {
     });
     return () => unsubscribe();
   }, []);
+
+  // 프로필 정보 실시간 구독
+  useEffect(() => {
+    if (!user) {
+      setProfileInfo(null);
+      setProfileLoading(false);
+      return;
+    }
+
+    setProfileLoading(true);
+    const profileRef = doc(db, `users/${user.uid}/profile/info`);
+    const unsubscribe = onSnapshot(
+      profileRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setProfileInfo({
+            nickname: data.nickname || user.displayName || "사용자",
+            bio: data.bio || "",
+            theme: data.theme || "notion-white",
+            username: data.username || "",
+            snsLinks: data.snsLinks || {},
+          });
+        } else {
+          setProfileInfo({
+            nickname: user.displayName || "사용자",
+            bio: "",
+            theme: "notion-white",
+            username: "",
+            snsLinks: {},
+          });
+        }
+        setProfileLoading(false);
+      },
+      (error) => {
+        console.error("실시간 프로필 로드 에러:", error);
+        setProfileLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
 
   const handleLogin = async () => {
     try {
@@ -59,7 +104,8 @@ export default function Page() {
 
   const copyShareLink = () => {
     if (!user) return;
-    const shareUrl = `${window.location.origin}/${user.uid}`;
+    const identifier = profileInfo?.username || user.uid;
+    const shareUrl = `${window.location.origin}/${identifier}`;
     navigator.clipboard.writeText(shareUrl);
     toast.success("내 공유 링크가 복사되었습니다!");
   };
@@ -99,7 +145,7 @@ export default function Page() {
                       )}
                     </Avatar>
                     <span className="text-xs font-semibold text-slate-650 max-w-[100px] truncate hidden sm:inline">
-                      {user.displayName || "사용자"}
+                      {profileInfo?.nickname || user.displayName || "사용자"}
                     </span>
                     <ChevronDown className="w-3 h-3 text-slate-400" />
                   </button>
@@ -117,7 +163,7 @@ export default function Page() {
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      <span className="font-bold text-slate-800 text-sm">{user.displayName || "사용자"}</span>
+                      <span className="font-bold text-slate-800 text-sm">{profileInfo?.nickname || user.displayName || "사용자"}</span>
                       {user.email && (
                         <span className="text-xs text-slate-400 truncate w-full mt-0.5" title={user.email}>{user.email}</span>
                       )}
@@ -237,7 +283,12 @@ export default function Page() {
           </div>
         ) : (
           // 로그인 사용자 대시보드
-          <DashboardShell user={user} onLogout={handleLogout} />
+          <DashboardShell 
+            user={user} 
+            onLogout={handleLogout} 
+            profileInfo={profileInfo || { nickname: user.displayName || "사용자", bio: "", theme: "notion-white", username: "", snsLinks: {} }}
+            loadingProfile={profileLoading}
+          />
         )}
       </main>
       
