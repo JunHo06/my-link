@@ -26,23 +26,23 @@ import { useLinks } from "@/hooks/use-links";
 export default function PublicProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const uid = params.uid as string;
+  const displayName = params.displayName as string;
 
   // 1. usernames 컬렉션에서 username이 매핑된 실제 uid가 있는지 조회
   const { data: targetUid, isLoading: loadingUid, isError: isUidError } = useQuery({
-    queryKey: ["resolveUid", uid],
+    queryKey: ["resolveUid", displayName],
     queryFn: async () => {
-      if (!uid) return null;
-      const usernameRef = doc(db, `usernames/${uid}`);
+      if (!displayName) return null;
+      const usernameRef = doc(db, `usernames/${displayName}`);
       const usernameSnap = await getDoc(usernameRef);
       
       if (usernameSnap.exists()) {
         const mappingData = usernameSnap.data();
-        return mappingData.uid || uid;
+        return mappingData.uid || null;
       }
-      return uid;
+      return null;
     },
-    enabled: !!uid,
+    enabled: !!displayName,
   });
 
   // 2. 프로필 정보 획득 (targetUid 해결 후 활성화)
@@ -55,8 +55,18 @@ export default function PublicProfilePage() {
   const links = allLinks.filter((link) => link.active !== false);
 
   const loading = loadingUid || loadingProfile || loadingLinks;
-  // 프로필 데이터를 성공적으로 가져오지 못했다면 에러(404) 처리
-  const error = isUidError || isProfileError || isLinksError || (!loading && !profile);
+  
+  // 프로필 데이터를 성공적으로 가져오지 못했거나 매핑된 정보가 유효하지 않다면 에러(404) 처리
+  const error =
+    isUidError ||
+    isProfileError ||
+    isLinksError ||
+    (!loading && (
+      !targetUid ||
+      !profile ||
+      !profile.username ||
+      profile.username.toLowerCase() !== displayName.toLowerCase()
+    ));
 
 
   const handleShare = () => {
@@ -133,9 +143,16 @@ export default function PublicProfilePage() {
         </Avatar>
 
         {/* 닉네임 */}
-        <h1 className="font-extrabold text-xl tracking-tight text-center mb-1.5 text-slate-950">
+        <h1 className="font-extrabold text-xl tracking-tight text-center mb-1 text-slate-950">
           {profile.nickname}
         </h1>
+
+        {/* 고유 주소 아이디 (username) */}
+        {profile.username && (
+          <p className="text-xs text-slate-400 font-semibold font-mono text-center mb-4">
+            @{profile.username}
+          </p>
+        )}
 
         {/* Bio */}
         {profile.bio && (
