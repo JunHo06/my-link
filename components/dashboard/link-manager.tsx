@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { User } from "firebase/auth";
 import { DashboardLinkItem } from "./dashboard-shell";
 import { Card } from "@/components/ui/card";
@@ -34,9 +34,10 @@ interface LinkManagerProps {
 }
 
 export default function LinkManager({ user, links, isLoading }: LinkManagerProps) {
-  const [localLinks, setLocalLinks] = useState<DashboardLinkItem[]>([]);
+  const [localLinks, setLocalLinks] = useState<DashboardLinkItem[]>(links);
+  const [prevLinks, setPrevLinks] = useState<DashboardLinkItem[]>(links);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  
+
   // 다이얼로그 추가용 상태
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [addTitle, setAddTitle] = useState("");
@@ -50,13 +51,14 @@ export default function LinkManager({ user, links, isLoading }: LinkManagerProps
   const deleteLinkMutation = useDeleteLink();
   const restoreLinkMutation = useRestoreLink();
   const updateLinksOrderMutation = useUpdateLinksOrder();
-
+  
   // Firestore 데이터가 업데이트되면 로컬 리스트도 업데이트 (단, 드래그 중이 아닐 때만)
-  useEffect(() => {
+  if (links !== prevLinks) {
+    setPrevLinks(links);
     if (draggedIndex === null) {
       setLocalLinks(links);
     }
-  }, [links, draggedIndex]);
+  }
 
   // 링크 추가 제출 처리
   const handleAddLink = async (e: React.FormEvent) => {

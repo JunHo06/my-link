@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -237,10 +238,10 @@ export default function PublicProfilePage() {
       </main>
 
       {/* 푸터 */}
-      <footer className="w-full py-8 text-center text-slate-350 text-[9px] uppercase tracking-wider mt-auto z-10">
-        <a href="/" className="hover:text-slate-650 transition-colors">
+      <footer className="w-full py-8 text-center text-slate-350 text-[9px] uppercase tracking-wider mt-auto z-10 font-bold">
+        <Link href="/" className="hover:text-slate-650 transition-colors">
           Powered by MyLink
-        </a>
+        </Link>
       </footer>
     </div>
   );

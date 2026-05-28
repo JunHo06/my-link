@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Link as LinkIcon, Loader2, LogIn, LogOut, ChevronDown, Share2, Sparkles, Smartphone, Layers, ShieldCheck } from "lucide-react";
-import { db, auth, googleProvider } from "@/lib/firebase";
+import { Link as LinkIcon, Loader2, LogIn, LogOut, ChevronDown, Share2 } from "lucide-react";
+import { auth, googleProvider } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -16,13 +15,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import DashboardShell, { ProfileInfo } from "@/components/dashboard/dashboard-shell";
+import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
+
+// 신규 랜딩 컴포넌트 임포트
+import LandingHero from "@/components/landing/landing-hero";
+import LandingPreview from "@/components/landing/landing-preview";
+import LandingFeatures from "@/components/landing/landing-features";
+import LandingSteps from "@/components/landing/landing-steps";
+import LandingFaq from "@/components/landing/landing-faq";
 
 export default function Page() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [tempUsername, setTempUsername] = useState("");
 
   // Auth 상태 변경 감지
   useEffect(() => {
@@ -35,7 +42,6 @@ export default function Page() {
 
   // React Query 프로필 정보 획득
   const { data: profileInfo, isLoading: profileLoading } = useProfile(user?.uid);
-
 
   const handleLogin = async () => {
     try {
@@ -50,11 +56,17 @@ export default function Page() {
     }
   };
 
+  const handleStartWithUsername = async (username: string) => {
+    setTempUsername(username);
+    await handleLogin();
+  };
+
   const handleLogout = async () => {
     try {
       setAuthLoading(true);
       await signOut(auth);
       toast.success("로그아웃되었습니다.");
+      setTempUsername(""); // 로그아웃 시 가상 주소 상태도 초기화
     } catch (error) {
       console.error("Firebase 로그아웃 에러:", error);
       toast.error("로그아웃에 실패했습니다.");
@@ -79,8 +91,8 @@ export default function Page() {
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           
           {/* 로고 영역 */}
-          <Link href="/" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-            <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shadow-xs">
+          <Link href="/" className="flex items-center gap-2 cursor-pointer hover:opacity-85 transition-opacity">
+            <div className="w-7.5 h-7.5 rounded-lg bg-slate-900 flex items-center justify-center shadow-xs">
               <LinkIcon className="w-4 h-4 text-white" />
             </div>
             <span className="font-extrabold text-base tracking-tight text-slate-900">
@@ -170,80 +182,61 @@ export default function Page() {
         {authLoading ? (
           <div className="flex flex-col items-center gap-3 py-20">
             <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-            <p className="text-xs text-slate-450">데이터를 로드하는 중...</p>
+            <p className="text-xs text-slate-450 font-medium">데이터를 로드하는 중...</p>
           </div>
         ) : !user ? (
-          // 비로그인 사용자 랜딩 및 로그인 페이지 (노션 스타일 미니멀 화이트)
-          <div className="w-full max-w-4xl px-6 py-16 md:py-24 flex flex-col items-center text-center space-y-12">
+          // 비로그인 사용자용 고도화된 반응형 프리미엄 랜딩 페이지
+          <div className="w-full bg-slate-50/40">
             
-            {/* 상단 뱃지 및 메인 카피 */}
-            <div className="space-y-4.5 max-w-2xl animate-in fade-in slide-in-from-bottom-5 duration-400">
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-slate-500 text-[11px] font-semibold mb-1">
-                <Sparkles className="w-3 h-3 text-slate-400" />
-                Notion-style Link Tree
+            {/* 1. 히어로 섹션 (가상 주소 입력 필드 포함) */}
+            <LandingHero onStart={handleStartWithUsername} isLoading={authLoading} />
+            
+            {/* 2. 인터랙티브 프리뷰 (실시간 테마 쇼룸) */}
+            <LandingPreview />
+            
+            {/* 3. 4대 주요 핵심 기능 그리드 */}
+            <LandingFeatures />
+            
+            {/* 4. 서비스 동작 원리 3단계 안내 */}
+            <LandingSteps />
+            
+            {/* 5. 자주 묻는 질문 FAQ (아코디언) */}
+            <LandingFaq />
+
+            {/* 6. 하단 CTA (최종 가입 유도 그라데이션 배너) */}
+            <div className="w-full max-w-5xl mx-auto px-6 pb-24 pt-12 text-center relative overflow-hidden">
+              <div className="bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-10 md:p-16 relative overflow-hidden shadow-xl border border-slate-800">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="max-w-2xl mx-auto space-y-6 relative z-10 flex flex-col items-center">
+                  <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+                    지금 바로 나만의 마이링크를 무료로 만들어 보세요
+                  </h2>
+                  <p className="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed font-medium">
+                    복잡한 가입 과정 없이 Google 계정 하나만으로 즉시 포트폴리오, 블로그, SNS를 아우르는 원페이지 프로필을 생성할 수 있습니다.
+                  </p>
+                  <Button
+                    onClick={handleLogin}
+                    disabled={authLoading}
+                    className="bg-white hover:bg-slate-100 text-slate-900 font-extrabold h-12 px-8 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md hover:-translate-y-0.5 transition-all text-xs sm:text-sm mt-4"
+                  >
+                    {authLoading ? (
+                      <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <LogIn className="w-4.5 h-4.5" />
+                        Google 계정으로 바로 시작하기
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight text-slate-900">
-                모든 링크를 하나의 <br />
-                <span className="underline decoration-slate-350 decoration-4 underline-offset-6">
-                  심플한 프로필 페이지
-                </span>
-                에 담으세요.
-              </h1>
-              <p className="text-slate-500 text-sm sm:text-base max-w-md mx-auto leading-relaxed">
-                인스타그램, 깃허브, 블로그 등 흩어져 있는 개인 링크들을 단 하나의 깔끔한 정리 장표로 생성해 소통해보세요.
-              </p>
-            </div>
-
-            {/* 로그인 시작하기 버튼 */}
-            <div className="animate-in fade-in slide-in-from-bottom-7 duration-450">
-              <Button
-                onClick={handleLogin}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-xs transition-transform hover:-translate-y-0.5 active:translate-y-0 rounded-lg h-12.5 px-8 flex items-center justify-center gap-2 cursor-pointer text-sm"
-              >
-                <LogIn className="w-4 h-4" />
-                Google 계정으로 시작하기
-              </Button>
-            </div>
-
-            {/* 기능 하이라이트 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-3xl pt-6 text-left animate-in fade-in slide-in-from-bottom-9 duration-500">
-              {/* 기능 1 */}
-              <Card className="p-5 bg-white border border-slate-200 rounded-xl space-y-2.5 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600">
-                  <Smartphone className="w-4 h-4" />
-                </div>
-                <h3 className="font-bold text-slate-800 text-xs sm:text-sm">실시간 미리보기</h3>
-                <p className="text-[11px] text-slate-450 leading-relaxed">
-                  정보를 바꾸거나 순서를 드래그 정렬하는 순간 오른쪽 가상 뷰어 스크린에 변경사항이 즉각 반영됩니다.
-                </p>
-              </Card>
-
-              {/* 기능 2 */}
-              <Card className="p-5 bg-white border border-slate-200 rounded-xl space-y-2.5 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600">
-                  <Layers className="w-4 h-4" />
-                </div>
-                <h3 className="font-bold text-slate-800 text-xs sm:text-sm">노션형 모노 테마</h3>
-                <p className="text-[11px] text-slate-450 leading-relaxed">
-                  노션 화이트/그레이, 웜 샌드 등 눈이 편안하고 차분한 파스텔 배경 프리셋을 자유롭게 스왑합니다.
-                </p>
-              </Card>
-
-              {/* 기능 3 */}
-              <Card className="p-5 bg-white border border-slate-200 rounded-xl space-y-2.5 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <h3 className="font-bold text-slate-800 text-xs sm:text-sm">직관적인 관리 도구</h3>
-                <p className="text-[11px] text-slate-450 leading-relaxed">
-                  인라인 편집기, 노션 스타일 공개 여부 스위치, 삭제 취소 피드백 기능 등으로 사용 동선을 최적화합니다.
-                </p>
-              </Card>
             </div>
             
           </div>
         ) : (
-          // 로그인 사용자 대시보드
+          // 로그인 사용자 대시보드 (온보딩 및 기존 대시보드 셸)
           <DashboardShell 
             user={user} 
             onLogout={handleLogout} 
@@ -251,7 +244,7 @@ export default function Page() {
               nickname: profileInfo?.nickname || user.displayName || "사용자",
               bio: profileInfo?.bio || "",
               theme: profileInfo?.theme || "notion-white",
-              username: profileInfo?.username || "",
+              username: profileInfo?.username || tempUsername || "", // 가상 주소 선점 정보 연동
               snsLinks: profileInfo?.snsLinks || {},
             }}
             loadingProfile={profileLoading}
@@ -260,7 +253,7 @@ export default function Page() {
       </main>
       
       {/* 푸터 */}
-      <footer className="w-full py-6 text-center border-t border-slate-100 bg-white text-slate-400 text-[10px] uppercase tracking-wider mt-auto z-10">
+      <footer className="w-full py-6 text-center border-t border-slate-100 bg-white text-slate-400 text-[10px] uppercase tracking-wider mt-auto z-10 font-mono font-bold">
         &copy; 2026 MyLink. Built with Notion style layout.
       </footer>
     </div>
