@@ -3,7 +3,8 @@
 import { User } from "firebase/auth";
 import { LinkItem } from "@/data/links";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link2, User as UserIcon, ExternalLink } from "lucide-react";
+import { Link2, User as UserIcon, ExternalLink, BarChart2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import LinkManager from "./link-manager";
 import ProfileEditor from "./profile-editor";
 import { Toaster } from "@/components/ui/sonner";
@@ -39,6 +40,7 @@ interface DashboardShellProps {
 }
 
 export default function DashboardShell({ user, onLogout, profileInfo, loadingProfile }: DashboardShellProps) {
+  const router = useRouter();
   // React Query 기반 링크 목록 획득
   const { data: links = [], isLoading: loadingLinks } = useLinks(user.uid);
 
@@ -73,15 +75,26 @@ export default function DashboardShell({ user, onLogout, profileInfo, loadingPro
             </TabsTrigger>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleOpenPreview}
-            className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-50 text-xs font-bold transition-colors cursor-pointer py-1.5 px-2.5 h-auto rounded-lg"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            내 페이지 보기
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/stats")}
+              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-50 text-xs font-bold transition-colors cursor-pointer py-1.5 px-2.5 h-auto rounded-lg"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              통계 보기
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenPreview}
+              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-50 text-xs font-bold transition-colors cursor-pointer py-1.5 px-2.5 h-auto rounded-lg"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              내 페이지 보기
+            </Button>
+          </div>
         </TabsList>
 
         {/* 링크 관리 탭 */}

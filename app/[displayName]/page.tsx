@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -27,6 +28,13 @@ export default function PublicProfilePage() {
   const params = useParams();
   const router = useRouter();
   const displayName = params.displayName as string;
+ 
+  // stats 경로로 접근 시 올바른 정적 라우트로 리다이렉트하는 안전장치
+  useEffect(() => {
+    if (displayName === "stats") {
+      router.replace("/stats");
+    }
+  }, [displayName, router]);
 
   // 1. usernames 컬렉션에서 username이 매핑된 실제 uid가 있는지 조회
   const { data: targetUid, isLoading: loadingUid, isError: isUidError } = useQuery({
