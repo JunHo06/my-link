@@ -12,6 +12,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  increment,
 } from "firebase/firestore";
 import { DashboardLinkItem } from "@/components/dashboard/dashboard-shell";
 
@@ -32,6 +33,7 @@ export function useLinks(userId: string | undefined) {
           url: data.url || "",
           active: data.active !== undefined ? data.active : true,
           order: data.order !== undefined ? data.order : 0,
+          clicks: data.clicks !== undefined ? data.clicks : 0,
         });
       });
       return linkData;
@@ -138,6 +140,21 @@ export function useUpdateLinksOrder() {
         batch.update(linkRef, { order: index });
       });
       await batch.commit();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["links", variables.userId] });
+    },
+  });
+}
+
+// 7. 링크 클릭 수 증가 Mutation
+export function useIncrementClick() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, linkId }: { userId: string; linkId: string }) => {
+      await updateDoc(doc(db, `users/${userId}/links`, linkId), {
+        clicks: increment(1),
+      });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["links", variables.userId] });

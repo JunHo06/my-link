@@ -14,6 +14,7 @@ import { useLinks } from "@/hooks/use-links";
 export interface DashboardLinkItem extends LinkItem {
   active?: boolean;
   order?: number;
+  clicks?: number;
 }
 
 export interface ProfileInfo {

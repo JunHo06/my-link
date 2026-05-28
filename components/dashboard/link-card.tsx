@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { GripVertical, ExternalLink, Pencil, Trash2, Loader2 } from "lucide-react";
+import { GripVertical, ExternalLink, Pencil, Trash2, Loader2, MousePointerClick } from "lucide-react";
 import FaviconImage from "./favicon-image";
 
 interface LinkCardProps {
@@ -188,9 +188,15 @@ export default function LinkCard({
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-slate-400 truncate max-w-[150px] sm:max-w-xs">
-              {link.url.replace(/^https?:\/\/(www\.)?/, "")}
-            </span>
+            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-450">
+              <span className="truncate max-w-[120px] sm:max-w-xs">
+                {link.url.replace(/^https?:\/\/(www\.)?/, "")}
+              </span>
+              <span className="inline-flex items-center gap-1 shrink-0 font-semibold text-[9px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200" title="클릭 수">
+                <MousePointerClick className="w-2.8 h-2.8 text-slate-400" />
+                {link.clicks || 0}
+              </span>
+            </div>
           </div>
 
           {/* 스위치 & 액션 툴킷 */}

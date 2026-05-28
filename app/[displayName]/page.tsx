@@ -21,7 +21,7 @@ import FaviconImage from "@/components/dashboard/favicon-image";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { useProfile } from "@/hooks/use-profile";
-import { useLinks } from "@/hooks/use-links";
+import { useLinks, useIncrementClick } from "@/hooks/use-links";
 
 export default function PublicProfilePage() {
   const params = useParams();
@@ -48,8 +48,9 @@ export default function PublicProfilePage() {
   // 2. 프로필 정보 획득 (targetUid 해결 후 활성화)
   const { data: profile, isLoading: loadingProfile, isError: isProfileError } = useProfile(targetUid || undefined);
 
-  // 3. 전체 링크 목록 획득 (targetUid 해결 후 활성화)
   const { data: allLinks = [], isLoading: loadingLinks, isError: isLinksError } = useLinks(targetUid || undefined);
+  
+  const incrementClick = useIncrementClick();
 
   // 공개 페이지이므로 active 활성화된 링크만 노출
   const links = allLinks.filter((link) => link.active !== false);
@@ -198,6 +199,11 @@ export default function PublicProfilePage() {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  if (targetUid) {
+                    incrementClick.mutate({ userId: targetUid, linkId: link.id });
+                  }
+                }}
                 className="group w-full min-h-[50px] px-4 py-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-800 shadow-sm flex items-center justify-between transition-all duration-200 select-none cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">

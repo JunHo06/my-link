@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, Link as LinkIcon } from "lucide-react";
+import { Plus, Loader2, Link as LinkIcon, MousePointerClick } from "lucide-react";
 import LinkCard from "./link-card";
 import { toast } from "sonner";
 import {
@@ -246,13 +246,22 @@ export default function LinkManager({ user, links, isLoading }: LinkManagerProps
   };
 
   const isAdding = addLinkMutation.isPending;
+  const totalClicks = links.reduce((sum, link) => sum + (link.clicks || 0), 0);
 
   return (
     <div className="space-y-5 text-slate-800">
       {/* 상단 컨트롤 바 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
-          <h2 className="text-base font-bold text-slate-800 tracking-tight">링크 목록</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-800 tracking-tight">링크 목록</h2>
+            {links.length > 0 && (
+              <span className="inline-flex items-center gap-1 font-semibold text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded" title="총 클릭 수">
+                <MousePointerClick className="w-3 h-3 text-slate-400" />
+                {totalClicks}
+              </span>
+            )}
+          </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
             목록에서 행을 잡고 끌어서 위아래 순서를 정렬할 수 있습니다.
           </p>

@@ -21,12 +21,13 @@ service cloud.firestore {
     // 보안 규칙 설정
     // ----------------------------------------------------
 
-    // 1. 유저 링크 정보 (users/{userId}/links/{linkId})
-    // - 읽기: 비로그인 사용자를 포함한 누구나 가능 (공개 프로필 홈 노출용)
-    // - 쓰기: 로그인한 본인의 데이터 영역만 가능 (생성, 수정, 삭제)
     match /users/{userId}/links/{linkId} {
       allow read: if true;
-      allow write: if isOwner(userId);
+      allow create, delete: if isOwner(userId);
+      allow update: if isOwner(userId) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks']) &&
+        request.resource.data.clicks == resource.data.get('clicks', 0) + 1
+      );
     }
     
     // 2. 유저 프로필 정보 (users/{userId}/profile/{documentId})
