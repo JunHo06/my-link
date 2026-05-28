@@ -7,6 +7,7 @@ import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useLinks } from "@/hooks/use-links";
+import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,7 +111,7 @@ export default function StatsPage() {
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           
           {/* 로고 영역 */}
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push("/")}>
+          <Link href="/" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
             <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shadow-xs">
               <LinkIcon className="w-4 h-4 text-white" />
             </div>
@@ -120,7 +121,7 @@ export default function StatsPage() {
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold ml-1 uppercase">
               Stats
             </span>
-          </div>
+          </Link>
 
           {/* 우측 네비게이션 & 드롭다운 */}
           <div className="flex items-center gap-3">

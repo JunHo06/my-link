@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Link as LinkIcon, Loader2, LogIn, LogOut, ChevronDown, Share2, Sparkles, Smartphone, Layers, ShieldCheck } from "lucide-react";
 import { db, auth, googleProvider } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
-import { doc } from "firebase/firestore";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -79,14 +79,14 @@ export default function Page() {
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           
           {/* 로고 영역 */}
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
             <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shadow-xs">
               <LinkIcon className="w-4 h-4 text-white" />
             </div>
             <span className="font-extrabold text-base tracking-tight text-slate-900">
               MyLink
             </span>
-          </div>
+          </Link>
 
           {/* 우측 로그인/사용자 드롭다운 */}
           <div className="flex items-center gap-4">
